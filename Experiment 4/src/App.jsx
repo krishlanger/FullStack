@@ -1,15 +1,15 @@
-import React, {
+import {
   useState,
   useMemo,
   useCallback,
-  memo
+  useEffect,
+  memo,
 } from "react";
-
 import "./App.css";
 
-/* =====================================================
-   INITIAL CALENDAR EVENTS
-===================================================== */
+// -----------------------------------------------------
+// INITIAL DATA
+// -----------------------------------------------------
 
 const initialEvents = [
   {
@@ -17,57 +17,57 @@ const initialEvents = [
     day: "Mon",
     time: "10:00",
     title: "Design review",
-    type: "Meeting"
+    type: "Meeting",
   },
   {
     id: 2,
     day: "Mon",
     time: "16:00",
     title: "Ship v2.3",
-    type: "Deadline"
+    type: "Deadline",
   },
   {
     id: 3,
     day: "Tue",
     time: "09:30",
     title: "1:1 with Sam",
-    type: "Meeting"
+    type: "Meeting",
   },
   {
     id: 4,
     day: "Wed",
     time: "13:00",
     title: "Write proposal",
-    type: "Focus block"
+    type: "Focus block",
   },
   {
     id: 5,
     day: "Thu",
     time: "15:00",
     title: "Client demo",
-    type: "Meeting"
+    type: "Meeting",
   },
   {
     id: 6,
     day: "Thu",
     time: "18:00",
     title: "Portfolio review",
-    type: "Focus block"
+    type: "Focus block",
   },
   {
     id: 7,
     day: "Sat",
     time: "10:00",
     title: "Grocery run",
-    type: "Personal"
+    type: "Personal",
   },
   {
     id: 8,
     day: "Sun",
     time: "11:00",
     title: "Sprint planning",
-    type: "Meeting"
-  }
+    type: "Meeting",
+  },
 ];
 
 const days = [
@@ -77,17 +77,32 @@ const days = [
   "Thu",
   "Fri",
   "Sat",
-  "Sun"
+  "Sun",
 ];
 
-/* =====================================================
-   MEMOIZED EVENT CARD
-===================================================== */
+const types = [
+  "Meeting",
+  "Deadline",
+  "Focus block",
+  "Personal",
+];
+
+// -----------------------------------------------------
+// RANDOM RENDER START
+// -----------------------------------------------------
+
+const getRandomRenderStart = () => {
+  return Math.floor(Math.random() * 40) + 20;
+};
+
+// -----------------------------------------------------
+// EVENT CARD - OPTIMIZED
+// -----------------------------------------------------
 
 const MemoEventCard = memo(function MemoEventCard({
   event,
   onDragStart,
-  onEdit
+  onEdit,
 }) {
   return (
     <div
@@ -95,33 +110,13 @@ const MemoEventCard = memo(function MemoEventCard({
         .toLowerCase()
         .replace(" ", "-")}`}
       draggable
-      onDragStart={(e) =>
-        onDragStart(e, event)
-      }
+      onDragStart={(e) => onDragStart(e, event.id)}
     >
-      <div
-        className="event-main"
-        onClick={() => onEdit(event)}
-      >
-        <div className="event-time">
-          {event.time}
-        </div>
-
-        <div className="event-title">
-          {event.title}
-        </div>
-      </div>
-
-      <div className="event-footer">
-
-        <span className="render-dot"></span>
-
-        <span className="event-type">
-          {event.type}
-        </span>
+      <div className="event-top">
+        <span className="event-time">{event.time}</span>
 
         <button
-          className="edit-button"
+          className="edit-btn"
           onClick={(e) => {
             e.stopPropagation();
             onEdit(event);
@@ -129,21 +124,23 @@ const MemoEventCard = memo(function MemoEventCard({
         >
           Edit
         </button>
-
       </div>
+
+      <div className="event-title">{event.title}</div>
+
+      <div className="event-type">{event.type}</div>
     </div>
   );
 });
 
-/* =====================================================
-   NORMAL EVENT CARD
-   Used when React.memo is OFF
-===================================================== */
+// -----------------------------------------------------
+// EVENT CARD - NORMAL
+// -----------------------------------------------------
 
 function NormalEventCard({
   event,
   onDragStart,
-  onEdit
+  onEdit,
 }) {
   return (
     <div
@@ -151,33 +148,13 @@ function NormalEventCard({
         .toLowerCase()
         .replace(" ", "-")}`}
       draggable
-      onDragStart={(e) =>
-        onDragStart(e, event)
-      }
+      onDragStart={(e) => onDragStart(e, event.id)}
     >
-      <div
-        className="event-main"
-        onClick={() => onEdit(event)}
-      >
-        <div className="event-time">
-          {event.time}
-        </div>
-
-        <div className="event-title">
-          {event.title}
-        </div>
-      </div>
-
-      <div className="event-footer">
-
-        <span className="render-dot"></span>
-
-        <span className="event-type">
-          {event.type}
-        </span>
+      <div className="event-top">
+        <span className="event-time">{event.time}</span>
 
         <button
-          className="edit-button"
+          className="edit-btn"
           onClick={(e) => {
             e.stopPropagation();
             onEdit(event);
@@ -185,1119 +162,963 @@ function NormalEventCard({
         >
           Edit
         </button>
-
       </div>
+
+      <div className="event-title">{event.title}</div>
+
+      <div className="event-type">{event.type}</div>
     </div>
   );
 }
 
-/* =====================================================
-   MAIN APP
-===================================================== */
+// -----------------------------------------------------
+// SWITCH COMPONENT
+// -----------------------------------------------------
+
+function ToggleSwitch({ checked, onChange }) {
+  return (
+    <button
+      className={`toggle ${checked ? "active" : ""}`}
+      onClick={onChange}
+      aria-label="Toggle optimization"
+    >
+      <span />
+    </button>
+  );
+}
+
+// -----------------------------------------------------
+// MAIN APP
+// -----------------------------------------------------
 
 function App() {
+  // Calendar
+  const [events, setEvents] = useState(initialEvents);
 
-  /* ---------------- CALENDAR STATE ---------------- */
-
-  const [events, setEvents] =
-    useState(initialEvents);
-
-  /* ---------------- OPTIMIZATION SWITCHES ---------------- */
-
-  const [useReactMemo, setUseReactMemo] =
+  // Optimization switches
+  const [useReactMemo, setUseReactMemo] = useState(true);
+  const [useCallbackOptimization, setUseCallbackOptimization] =
+    useState(true);
+  const [useMemoOptimization, setUseMemoOptimization] =
     useState(true);
 
-  const [
-    useCallbackOptimization,
-    setUseCallbackOptimization
-  ] = useState(true);
+  // Other controls
+  const [liveClock, setLiveClock] = useState(false);
+  const [selectedType, setSelectedType] = useState("All");
 
-  const [
-    useMemoOptimization,
-    setUseMemoOptimization
-  ] = useState(true);
+  // Render monitor
+  const [renderScore, setRenderScore] = useState(0);
+  const [cardRenders, setCardRenders] = useState({});
 
-  /* ---------------- LIVE CLOCK ---------------- */
+  // Modals
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [showAddPost, setShowAddPost] = useState(false);
 
-  const [liveClock, setLiveClock] =
-    useState(false);
+  // Add post form
+  const [newPost, setNewPost] = useState({
+    title: "",
+    day: "Mon",
+    time: "10:00",
+    type: "Meeting",
+  });
 
-  /* ---------------- FILTER ---------------- */
+  // Edit form
+  const [editForm, setEditForm] = useState({
+    title: "",
+    day: "Mon",
+    time: "10:00",
+    type: "Meeting",
+  });
 
-  const [selectedType, setSelectedType] =
-    useState("All");
+  // Live clock value
+  const [clock, setClock] = useState(new Date());
 
-  /* ---------------- RENDER MONITOR ---------------- */
+  // ---------------------------------------------------
+  // OPTIMIZATION STATUS
+  // ---------------------------------------------------
 
-  const [renderScore, setRenderScore] =
-    useState(0);
+  const allOptimizationsOff =
+    !useReactMemo &&
+    !useCallbackOptimization &&
+    !useMemoOptimization;
 
-  const [cardRenders, setCardRenders] =
-    useState({});
-
-  /* ---------------- EDIT ---------------- */
-
-  const [editingEvent, setEditingEvent] =
-    useState(null);
-
-  /* ---------------- ADD POST ---------------- */
-
-  const [showAddPost, setShowAddPost] =
-    useState(false);
-
-  const [newPost, setNewPost] =
-    useState({
-      title: "",
-      day: "Mon",
-      time: "10:00",
-      type: "Meeting"
-    });
-
-  /* =====================================================
-     OPTIMAL MODE
-  ===================================================== */
-
-  const isOptimal =
+  const allOptimizationsOn =
     useReactMemo &&
     useCallbackOptimization &&
     useMemoOptimization;
 
-  /* =====================================================
-     RENDER WORK FUNCTION
+  // ---------------------------------------------------
+  // LIVE CLOCK
+  // IMPORTANT:
+  // This does NOT affect renderScore
+  // ---------------------------------------------------
 
-     IMPORTANT:
-     This function is called ONLY when
-     user performs an action.
+  useEffect(() => {
+    if (!liveClock) return;
 
-     It never runs automatically.
-  ===================================================== */
+    const interval = setInterval(() => {
+      setClock(new Date());
+    }, 450);
 
-  const recordRenderWork = (
-    eventId = null
-  ) => {
+    return () => clearInterval(interval);
+  }, [liveClock]);
 
-    if (isOptimal) {
+  // ---------------------------------------------------
+  // WHEN ALL OPTIMIZATIONS BECOME OFF
+  // RANDOMIZE RENDER SCORE
+  // ---------------------------------------------------
 
-      /*
-        OPTIMAL MODE
-
-        Only one render unit is counted.
-      */
-
-      setRenderScore(
-        (previous) =>
-          previous + 1
-      );
-
-      if (eventId !== null) {
-
-        setCardRenders(
-          (previous) => ({
-            ...previous,
-            [eventId]:
-              (previous[eventId] || 0) + 1
-          })
-        );
-
-      }
-
-    } else {
-
-      /*
-        NON-OPTIMAL MODE
-
-        Every existing card is considered
-        part of the rendering work.
-      */
-
-      setRenderScore(
-        (previous) =>
-          previous + events.length
-      );
-
-      setCardRenders(
-        (previous) => {
-
-          const updated = {
-            ...previous
-          };
-
-          events.forEach((event) => {
-
-            updated[event.id] =
-              (updated[event.id] || 0) + 1;
-
-          });
-
-          return updated;
-
-        }
-      );
+  useEffect(() => {
+    if (allOptimizationsOff) {
+      setRenderScore(getRandomRenderStart());
     }
-  };
+  }, [allOptimizationsOff]);
 
-  /* =====================================================
-     USEMEMO
-  ===================================================== */
+  // ---------------------------------------------------
+  // FILTERED EVENTS
+  // useMemo optimization is demonstrated here
+  // ---------------------------------------------------
 
   const filteredEvents = useMemo(() => {
-
     if (selectedType === "All") {
       return events;
     }
 
     return events.filter(
-      (event) =>
-        event.type === selectedType
+      (event) => event.type === selectedType
     );
-
   }, [
     events,
     selectedType,
-    useMemoOptimization
+    useMemoOptimization,
   ]);
 
-  /* =====================================================
-     USECALLBACK - DRAG START
-  ===================================================== */
+  // ---------------------------------------------------
+  // RECORD RENDER WORK
+  // ---------------------------------------------------
 
-  const optimizedDragStart =
-    useCallback(
-      (e, event) => {
+  const recordRenderWork = (eventId = null) => {
+    // NON-OPTIMAL
+    if (allOptimizationsOff) {
+      setRenderScore((prev) => {
+        return prev + events.length;
+      });
 
-        e.dataTransfer.setData(
-          "eventId",
-          event.id.toString()
-        );
+      setCardRenders((prev) => {
+        const updated = { ...prev };
 
-      },
-      []
-    );
+        events.forEach((event) => {
+          updated[event.id] =
+            (updated[event.id] || 0) + 1;
+        });
 
-  const normalDragStart = (
-    e,
-    event
-  ) => {
+        return updated;
+      });
 
-    e.dataTransfer.setData(
-      "eventId",
-      event.id.toString()
-    );
-
-  };
-
-  const handleDragStart =
-    useCallbackOptimization
-      ? optimizedDragStart
-      : normalDragStart;
-
-  /* =====================================================
-     DRAG & DROP
-  ===================================================== */
-
-  const handleDrop = (
-    e,
-    day
-  ) => {
-
-    e.preventDefault();
-
-    const eventId = Number(
-      e.dataTransfer.getData(
-        "eventId"
-      )
-    );
-
-    if (!eventId) {
       return;
     }
 
-    setEvents(
-      (currentEvents) =>
-        currentEvents.map(
-          (event) =>
-            event.id === eventId
-              ? {
-                  ...event,
-                  day: day
-                }
-              : event
-        )
+    // OPTIMAL
+    setRenderScore((prev) => prev + 1);
+
+    if (eventId !== null) {
+      setCardRenders((prev) => ({
+        ...prev,
+        [eventId]:
+          (prev[eventId] || 0) + 1,
+      }));
+    }
+  };
+
+  // ---------------------------------------------------
+  // DRAG HANDLER - OPTIMIZED
+  // ---------------------------------------------------
+
+  const optimizedDragStart = useCallback(
+    (e, eventId) => {
+      e.dataTransfer.setData(
+        "eventId",
+        String(eventId)
+      );
+    },
+    []
+  );
+
+  // ---------------------------------------------------
+  // DRAG HANDLER - NORMAL
+  // ---------------------------------------------------
+
+  const normalDragStart = (e, eventId) => {
+    e.dataTransfer.setData(
+      "eventId",
+      String(eventId)
+    );
+  };
+
+  // Select appropriate handler
+  const handleDragStart = useCallback(
+    (e, eventId) => {
+      if (useCallbackOptimization) {
+        optimizedDragStart(e, eventId);
+      } else {
+        normalDragStart(e, eventId);
+      }
+    },
+    [
+      useCallbackOptimization,
+      optimizedDragStart,
+    ]
+  );
+
+  // ---------------------------------------------------
+  // DROP EVENT
+  // ---------------------------------------------------
+
+  const handleDrop = (e, day) => {
+    e.preventDefault();
+
+    const eventId = Number(
+      e.dataTransfer.getData("eventId")
     );
 
-    /*
-      Increase rendering score
-      because user moved an event.
-    */
+    if (!eventId) return;
+
+    setEvents((prevEvents) =>
+      prevEvents.map((event) =>
+        event.id === eventId
+          ? { ...event, day }
+          : event
+      )
+    );
 
     recordRenderWork(eventId);
   };
 
-  const handleDragOver =
-    (e) => {
-      e.preventDefault();
-    };
+  // ---------------------------------------------------
+  // DRAG OVER
+  // ---------------------------------------------------
 
-  /* =====================================================
-     EDIT
-  ===================================================== */
-
-  const optimizedEdit =
-    useCallback(
-      (event) => {
-
-        setEditingEvent({
-          ...event
-        });
-
-      },
-      []
-    );
-
-  const normalEdit = (
-    event
-  ) => {
-
-    setEditingEvent({
-      ...event
-    });
-
+  const handleDragOver = (e) => {
+    e.preventDefault();
   };
 
-  const handleEdit =
-    useCallbackOptimization
-      ? optimizedEdit
-      : normalEdit;
+  // ---------------------------------------------------
+  // EDIT EVENT
+  // ---------------------------------------------------
 
-  /* =====================================================
-     SAVE EDIT
-  ===================================================== */
+  const openEditModal = (event) => {
+    setEditingEvent(event);
+
+    setEditForm({
+      title: event.title,
+      day: event.day,
+      time: event.time,
+      type: event.type,
+    });
+  };
 
   const saveEdit = () => {
+    if (!editingEvent) return;
 
-    if (!editingEvent) {
-      return;
-    }
-
-    setEvents(
-      (currentEvents) =>
-        currentEvents.map(
-          (event) =>
-            event.id ===
-            editingEvent.id
-              ? editingEvent
-              : event
-        )
+    setEvents((prevEvents) =>
+      prevEvents.map((event) =>
+        event.id === editingEvent.id
+          ? {
+              ...event,
+              title: editForm.title,
+              day: editForm.day,
+              time: editForm.time,
+              type: editForm.type,
+            }
+          : event
+      )
     );
 
-    /*
-      Editing causes rendering.
-    */
-
-    recordRenderWork(
-      editingEvent.id
-    );
+    recordRenderWork(editingEvent.id);
 
     setEditingEvent(null);
   };
 
-  /* =====================================================
-     ADD POST
-  ===================================================== */
+  // ---------------------------------------------------
+  // ADD POST
+  // ---------------------------------------------------
 
   const addPost = () => {
-
     if (!newPost.title.trim()) {
-
-      alert(
-        "Please enter a post title."
-      );
-
+      alert("Please enter a post title.");
       return;
     }
 
-    const post = {
+    const newEvent = {
       id: Date.now(),
-      title: newPost.title,
       day: newPost.day,
       time: newPost.time,
-      type: newPost.type
+      title: newPost.title,
+      type: newPost.type,
     };
 
-    setEvents(
-      (currentEvents) => [
-        ...currentEvents,
-        post
-      ]
-    );
+    setEvents((prevEvents) => [
+      ...prevEvents,
+      newEvent,
+    ]);
 
-    /*
-      Adding a post causes rendering.
-    */
-
-    if (isOptimal) {
-
+    if (allOptimizationsOff) {
       setRenderScore(
-        (previous) =>
-          previous + 1
+        (prev) => prev + events.length + 1
       );
 
-      setCardRenders(
-        (previous) => ({
-          ...previous,
-          [post.id]: 1
-        })
-      );
+      setCardRenders((prev) => {
+        const updated = { ...prev };
 
+        events.forEach((event) => {
+          updated[event.id] =
+            (updated[event.id] || 0) + 1;
+        });
+
+        updated[newEvent.id] = 1;
+
+        return updated;
+      });
     } else {
+      setRenderScore((prev) => prev + 1);
 
-      setRenderScore(
-        (previous) =>
-          previous +
-          events.length +
-          1
-      );
-
-      setCardRenders(
-        (previous) => {
-
-          const updated = {
-            ...previous
-          };
-
-          events.forEach(
-            (event) => {
-
-              updated[event.id] =
-                (updated[event.id] || 0) +
-                1;
-
-            }
-          );
-
-          updated[post.id] = 1;
-
-          return updated;
-
-        }
-      );
+      setCardRenders((prev) => ({
+        ...prev,
+        [newEvent.id]: 1,
+      }));
     }
-
-    /* Clear form */
 
     setNewPost({
       title: "",
       day: "Mon",
       time: "10:00",
-      type: "Meeting"
+      type: "Meeting",
     });
 
     setShowAddPost(false);
   };
 
-  /* =====================================================
-     FILTER ACTION
-  ===================================================== */
+  // ---------------------------------------------------
+  // FILTER
+  // ---------------------------------------------------
 
-  const handleFilterChange = (
-    value
-  ) => {
-
+  const handleFilterChange = (value) => {
     setSelectedType(value);
 
-    /*
-      Filtering also changes the UI,
-      therefore count render work.
-    */
-
+    // Filtering is a user action,
+    // therefore it affects the render monitor.
     recordRenderWork();
   };
 
-  /* =====================================================
-     RESET CALENDAR
-  ===================================================== */
+  // ---------------------------------------------------
+  // RESET CALENDAR
+  // ---------------------------------------------------
 
   const resetCalendar = () => {
-
-    setEvents(
-      initialEvents
-    );
-
-    setSelectedType(
-      "All"
-    );
-
-    setEditingEvent(
-      null
-    );
-
-    /*
-      We intentionally DO NOT reset
-      the render monitor here.
-    */
+    setEvents(initialEvents);
+    setSelectedType("All");
+    setEditingEvent(null);
   };
 
-  /* =====================================================
-     RESET COUNTERS
-  ===================================================== */
+  // ---------------------------------------------------
+  // RESET COUNTERS
+  // ---------------------------------------------------
 
   const resetCounters = () => {
-
-    setRenderScore(0);
+    if (allOptimizationsOff) {
+      // Non-optimal mode should never restart from zero
+      setRenderScore(getRandomRenderStart());
+    } else {
+      setRenderScore(0);
+    }
 
     setCardRenders({});
   };
 
-  /* =====================================================
-     GET EVENTS FOR DAY
-  ===================================================== */
+  // ---------------------------------------------------
+  // GET DAY EVENTS
+  // ---------------------------------------------------
 
-  const getEventsForDay = (
-    day
-  ) => {
-
-    return filteredEvents.filter(
-      (event) =>
-        event.day === day
-    );
-
+  const getEventsForDay = (day) => {
+    return filteredEvents
+      .filter((event) => event.day === day)
+      .sort((a, b) =>
+        a.time.localeCompare(b.time)
+      );
   };
 
-  /* =====================================================
-     SELECT CARD TYPE
-  ===================================================== */
+  // ---------------------------------------------------
+  // CARD COMPONENT
+  // ---------------------------------------------------
 
-  const CardComponent =
-    useReactMemo
-      ? MemoEventCard
-      : NormalEventCard;
+  const CardComponent = useReactMemo
+    ? MemoEventCard
+    : NormalEventCard;
 
-  /* =====================================================
-     UI
-  ===================================================== */
+  // ---------------------------------------------------
+  // MAX RENDER COUNT
+  // ---------------------------------------------------
+
+  const maxCardRender = Math.max(
+    1,
+    ...Object.values(cardRenders)
+  );
+
+  // ---------------------------------------------------
+  // CURRENT CLOCK TEXT
+  // ---------------------------------------------------
+
+  const currentTime = clock.toLocaleTimeString(
+    [],
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    }
+  );
 
   return (
     <div className="app">
-
-      {/* =================================================
-          HEADER
-      ================================================= */}
+      {/* ========================================= */}
+      {/* HEADER */}
+      {/* ========================================= */}
 
       <header className="header">
+        <div>
+          <h1>Interactive Calendar</h1>
 
-        <h1>
-          Interactive Calendar
-        </h1>
-
-        <p>
-          Drag events between days, then
-          flip the switches below to see,
-          in real time, what React.memo,
-          useCallback, and useMemo
-          actually do to re-renders.
-        </p>
-
+          <p>
+            Test React rendering optimizations while
+            scheduling and managing posts.
+          </p>
+        </div>
       </header>
 
-      {/* =================================================
-          CONTROL PANEL
-      ================================================= */}
+      {/* ========================================= */}
+      {/* OPTIMIZATION CONTROL PANEL */}
+      {/* ========================================= */}
 
       <section className="control-panel">
+        <h2>Rendering Optimizations</h2>
 
-        <div className="optimization-row">
+        <div className="optimization-grid">
 
           {/* React.memo */}
 
           <div className="optimization-item">
+            <div className="optimization-text">
+              <strong>React.memo on cards</strong>
 
-            <div className="optimization-top">
-
-              <button
-                className={`switch ${
-                  useReactMemo
-                    ? "on"
-                    : ""
-                }`}
-                onClick={() =>
-                  setUseReactMemo(
-                    (value) =>
-                      !value
-                  )
-                }
-              >
-                <span></span>
-              </button>
-
-              <div>
-
-                <h3>
-                  React.memo on cards
-                </h3>
-
-                <p>
-                  Skip a card's re-render
-                  when its own props
-                  haven't changed.
-                </p>
-
-              </div>
-
+              <span>
+                Skip a card's re-render when its own
+                props haven't changed.
+              </span>
             </div>
 
+            <ToggleSwitch
+              checked={useReactMemo}
+              onChange={() =>
+                setUseReactMemo((prev) => !prev)
+              }
+            />
           </div>
 
           {/* useCallback */}
 
           <div className="optimization-item">
+            <div className="optimization-text">
+              <strong>
+                useCallback for handlers
+              </strong>
 
-            <div className="optimization-top">
-
-              <button
-                className={`switch ${
-                  useCallbackOptimization
-                    ? "on"
-                    : ""
-                }`}
-                onClick={() =>
-                  setUseCallbackOptimization(
-                    (value) =>
-                      !value
-                  )
-                }
-              >
-                <span></span>
-              </button>
-
-              <div>
-
-                <h3>
-                  useCallback for handlers
-                </h3>
-
-                <p>
-                  Keep drag handlers
-                  referentially stable
-                  so memo isn't fooled.
-                </p>
-
-              </div>
-
+              <span>
+                Keep drag handlers referentially stable
+                so memo isn't fooled.
+              </span>
             </div>
 
+            <ToggleSwitch
+              checked={useCallbackOptimization}
+              onChange={() =>
+                setUseCallbackOptimization(
+                  (prev) => !prev
+                )
+              }
+            />
           </div>
 
           {/* useMemo */}
 
           <div className="optimization-item">
+            <div className="optimization-text">
+              <strong>
+                useMemo for agenda filter
+              </strong>
 
-            <div className="optimization-top">
-
-              <button
-                className={`switch ${
-                  useMemoOptimization
-                    ? "on"
-                    : ""
-                }`}
-                onClick={() =>
-                  setUseMemoOptimization(
-                    (value) =>
-                      !value
-                  )
-                }
-              >
-                <span></span>
-              </button>
-
-              <div>
-
-                <h3>
-                  useMemo for agenda filter
-                </h3>
-
-                <p>
-                  Cache the filtered list;
-                  recompute only when
-                  events or filter change.
-                </p>
-
-              </div>
-
+              <span>
+                Cache the filtered list; recompute only
+                when events or filter change.
+              </span>
             </div>
 
+            <ToggleSwitch
+              checked={useMemoOptimization}
+              onChange={() =>
+                setUseMemoOptimization(
+                  (prev) => !prev
+                )
+              }
+            />
           </div>
-
         </div>
 
-        <div className="divider"></div>
+        {/* ===================================== */}
+        {/* LOWER CONTROLS */}
+        {/* ===================================== */}
 
-        {/* Live Clock */}
+        <div className="control-bottom">
 
-        <div className="bottom-controls">
+          <div className="clock-control">
+            <ToggleSwitch
+              checked={liveClock}
+              onChange={() =>
+                setLiveClock((prev) => !prev)
+              }
+            />
 
-          <div className="live-control">
+            <div>
+              <strong>Live clock</strong>
 
-            <div className="optimization-top">
+              <span>
+                Ticks every 450ms to simulate unrelated
+                state elsewhere in the app.
+              </span>
 
-              <button
-                className={`switch ${
-                  liveClock
-                    ? "on"
-                    : ""
-                }`}
-                onClick={() =>
-                  setLiveClock(
-                    (value) =>
-                      !value
-                  )
-                }
-              >
-                <span></span>
-              </button>
-
-              <div>
-
-                <h3>
-                  Live clock
-                </h3>
-
-                <p>
-                  Ticks every 450ms to
-                  simulate unrelated
-                  state elsewhere in
-                  the app.
-                </p>
-
-              </div>
-
+              {liveClock && (
+                <div className="clock-value">
+                  {currentTime}
+                </div>
+              )}
             </div>
-
           </div>
 
-          <div className="control-buttons">
-
+          <div className="button-group">
             <button
-              className="reset-counter"
-              onClick={
-                resetCounters
-              }
+              className="secondary-btn"
+              onClick={resetCounters}
             >
               Reset counters
             </button>
 
             <button
-              className="add-post-top"
-              onClick={() =>
-                setShowAddPost(
-                  true
-                )
-              }
+              className="primary-btn"
+              onClick={() => setShowAddPost(true)}
             >
               + Add Post
             </button>
-
           </div>
-
         </div>
-
       </section>
 
-      {/* =================================================
-          MODE STATUS
-      ================================================= */}
+      {/* ========================================= */}
+      {/* STATUS */}
+      {/* ========================================= */}
 
-      <div
-        className={`mode-banner ${
-          isOptimal
+      <section
+        className={`status-banner ${
+          allOptimizationsOn
             ? "optimal"
             : "non-optimal"
         }`}
       >
+        <div className="status-icon">
+          {allOptimizationsOn ? "✓" : "!"}
+        </div>
 
-        <strong>
+        <div>
+          <strong>
+            {allOptimizationsOn
+              ? "Optimal rendering enabled"
+              : "Non-optimal rendering mode"}
+          </strong>
 
-          {isOptimal
-            ? "✓ OPTIMAL RENDERING"
-            : "⚠ NON-OPTIMAL RENDERING"}
+          <p>
+            {allOptimizationsOn
+              ? "Only necessary calendar cards are simulated as re-rendering."
+              : "More calendar cards are simulated as re-rendering after each user action."}
+          </p>
+        </div>
+      </section>
 
-        </strong>
+      {/* ========================================= */}
+      {/* FILTER */}
+      {/* ========================================= */}
 
-        <span>
+      <section className="filter-section">
+        <div>
+          <h3>Filter Agenda</h3>
+          <p>
+            Choose a post type to filter the calendar.
+          </p>
+        </div>
 
-          {isOptimal
-            ? "All three React optimizations are enabled."
-            : "One or more optimizations are disabled. More rendering work occurs on each action."}
+        <select
+          value={selectedType}
+          onChange={(e) =>
+            handleFilterChange(e.target.value)
+          }
+        >
+          <option value="All">All</option>
 
-        </span>
+          {types.map((type) => (
+            <option
+              key={type}
+              value={type}
+            >
+              {type}
+            </option>
+          ))}
+        </select>
+      </section>
 
-      </div>
+      {/* ========================================= */}
+      {/* CALENDAR */}
+      {/* ========================================= */}
 
-      {/* =================================================
-          MAIN CONTENT
-      ================================================= */}
+      <section className="calendar-section">
 
-      <main>
+        <div className="section-heading">
+          <div>
+            <h2>Week View</h2>
 
-        {/* =================================================
-            WEEK VIEW
-        ================================================= */}
-
-        <section className="calendar-section">
-
-          <div className="section-heading">
-
-            <h2>
-              WEEK VIEW
-            </h2>
-
-            <div className="legend">
-
-              <span className="meeting">
-                Meeting
-              </span>
-
-              <span className="deadline">
-                Deadline
-              </span>
-
-              <span className="focus">
-                Focus block
-              </span>
-
-              <span className="personal">
-                Personal
-              </span>
-
-            </div>
-
+            <p>
+              Drag posts between days or click Edit to
+              change their details.
+            </p>
           </div>
 
-          {/* Calendar */}
+          <button
+            className="secondary-btn small-btn"
+            onClick={resetCalendar}
+          >
+            Reset Calendar
+          </button>
+        </div>
 
-          <div className="calendar">
+        <div className="calendar-grid">
 
-            {days.map(
-              (day) => (
+          {days.map((day) => {
+            const dayEvents =
+              getEventsForDay(day);
 
-                <div
-                  className="day-column"
-                  key={day}
-                  onDrop={(e) =>
-                    handleDrop(
-                      e,
-                      day
-                    )
-                  }
-                  onDragOver={
-                    handleDragOver
-                  }
-                >
-
-                  <div className="day-header">
-                    {day}
-                  </div>
-
-                  <div className="events">
-
-                    {getEventsForDay(
-                      day
-                    ).map(
-                      (event) => (
-
-                        <CardComponent
-                          key={
-                            event.id
-                          }
-                          event={
-                            event
-                          }
-                          onDragStart={
-                            handleDragStart
-                          }
-                          onEdit={
-                            handleEdit
-                          }
-                        />
-
-                      )
-                    )}
-
-                  </div>
-
+            return (
+              <div
+                className="day-column"
+                key={day}
+                onDragOver={handleDragOver}
+                onDrop={(e) =>
+                  handleDrop(e, day)
+                }
+              >
+                <div className="day-header">
+                  {day}
+                  <span>
+                    {dayEvents.length}
+                  </span>
                 </div>
 
-              )
-            )}
+                <div className="day-content">
 
+                  {dayEvents.length === 0 ? (
+                    <div className="empty-day">
+                      Drop post here
+                    </div>
+                  ) : (
+                    dayEvents.map((event) => (
+                      <CardComponent
+                        key={event.id}
+                        event={event}
+                        onDragStart={
+                          handleDragStart
+                        }
+                        onEdit={openEditModal}
+                      />
+                    ))
+                  )}
+
+                </div>
+              </div>
+            );
+          })}
+
+        </div>
+      </section>
+
+      {/* ========================================= */}
+      {/* RENDER MONITOR */}
+      {/* ========================================= */}
+
+      <section className="monitor-section">
+
+        <div className="monitor-header">
+          <div>
+            <h2>Render Monitor</h2>
+
+            <p>
+              Activity is counted only after calendar
+              actions such as drag, edit, add, or filter.
+            </p>
           </div>
 
-        </section>
+          <div className="score-box">
+            <span>Total renders logged</span>
 
-        {/* =================================================
-            RENDER MONITOR
-        ================================================= */}
+            <strong>{renderScore}</strong>
+          </div>
+        </div>
 
-        <section className="monitor">
+        <div className="monitor-body">
 
-          <h2>
-            RENDER MONITOR
-          </h2>
+          {/* Total renders */}
 
-          <div className="monitor-stats">
-
-            <div className="stat">
-
-              <strong>
-                {renderScore}
-              </strong>
-
-              <span>
-                total renders logged
-              </span>
-
-            </div>
-
-            <div className="stat">
+          <div className="monitor-summary">
+            <div>
+              <span>Cards that have rendered</span>
 
               <strong>
                 {
-                  filteredEvents.length
-                }
-                /
-                {
-                  events.length
+                  Object.keys(cardRenders)
+                    .length
                 }
               </strong>
-
-              <span>
-                cards that have rendered
-              </span>
-
             </div>
 
+            <div>
+              <span>Current mode</span>
+
+              <strong>
+                {allOptimizationsOn
+                  ? "Optimized"
+                  : "Non-optimized"}
+              </strong>
+            </div>
           </div>
 
-          <div className="render-list">
+          {/* Card render bars */}
 
-            {events.map(
-              (event) => {
+          <div className="render-bars">
 
-                const count =
-                  cardRenders[
-                    event.id
-                  ] || 0;
+            {events.map((event) => {
+              const count =
+                cardRenders[event.id] || 0;
 
-                const width =
-                  Math.min(
-                    count * 12,
-                    100
-                  );
+              const width =
+                count === 0
+                  ? 0
+                  : Math.max(
+                      8,
+                      (count / maxCardRender) *
+                        100
+                    );
 
-                return (
-
-                  <div
-                    className="render-row"
-                    key={
-                      event.id
-                    }
-                  >
-
-                    <span className="render-name">
+              return (
+                <div
+                  className="render-row"
+                  key={event.id}
+                >
+                  <div className="render-label">
+                    <span>
                       {event.title}
                     </span>
 
-                    <div className="render-bar">
-
-                      <div
-                        className="render-progress"
-                        style={{
-                          width:
-                            `${width}%`
-                        }}
-                      ></div>
-
-                    </div>
-
-                    <span className="render-number">
+                    <strong>
                       {count}
-                    </span>
-
+                    </strong>
                   </div>
 
-                );
-
-              }
-            )}
+                  <div className="render-track">
+                    <div
+                      className="render-fill"
+                      style={{
+                        width: `${width}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
 
           </div>
+
+          {/* Explanation */}
 
           <div className="monitor-explanation">
 
-            <div>
+            <div className="explanation-item">
+              <span className="dot optimized-dot" />
 
-              <span className="status-dot"></span>
+              <div>
+                <strong>React.memo</strong>
 
-              <span>
-                Optimal:
-                only necessary render
-                work is counted.
-              </span>
-
+                <p>
+                  Prevents unchanged event cards from
+                  being re-rendered.
+                </p>
+              </div>
             </div>
 
-            <div>
+            <div className="explanation-item">
+              <span className="dot callback-dot" />
 
-              <span className="status-dot warning"></span>
+              <div>
+                <strong>useCallback</strong>
 
-              <span>
-                Non-optimal:
-                more cards receive
-                render work.
-              </span>
+                <p>
+                  Keeps handler functions stable between
+                  renders.
+                </p>
+              </div>
+            </div>
 
+            <div className="explanation-item">
+              <span className="dot memo-dot" />
+
+              <div>
+                <strong>useMemo</strong>
+
+                <p>
+                  Avoids unnecessary recalculation of
+                  filtered agenda data.
+                </p>
+              </div>
             </div>
 
           </div>
 
-        </section>
+        </div>
+      </section>
 
-      </main>
-
-      {/* =================================================
-          EDIT MODAL
-      ================================================= */}
+      {/* ========================================= */}
+      {/* EDIT MODAL */}
+      {/* ========================================= */}
 
       {editingEvent && (
-
         <div className="modal-overlay">
-
           <div className="modal">
 
-            <h2>
-              Edit Post
-            </h2>
-
-            <label>
-              Post Title
-            </label>
-
-            <input
-              type="text"
-              value={
-                editingEvent.title
-              }
-              onChange={(e) =>
-                setEditingEvent({
-                  ...editingEvent,
-                  title:
-                    e.target.value
-                })
-              }
-            />
-
-            <label>
-              Day
-            </label>
-
-            <select
-              value={
-                editingEvent.day
-              }
-              onChange={(e) =>
-                setEditingEvent({
-                  ...editingEvent,
-                  day:
-                    e.target.value
-                })
-              }
-            >
-
-              {days.map(
-                (day) => (
-
-                  <option
-                    key={day}
-                    value={day}
-                  >
-                    {day}
-                  </option>
-
-                )
-              )}
-
-            </select>
-
-            <label>
-              Time
-            </label>
-
-            <input
-              type="time"
-              value={
-                editingEvent.time
-              }
-              onChange={(e) =>
-                setEditingEvent({
-                  ...editingEvent,
-                  time:
-                    e.target.value
-                })
-              }
-            />
-
-            <label>
-              Type
-            </label>
-
-            <select
-              value={
-                editingEvent.type
-              }
-              onChange={(e) =>
-                setEditingEvent({
-                  ...editingEvent,
-                  type:
-                    e.target.value
-                })
-              }
-            >
-
-              <option value="Meeting">
-                Meeting
-              </option>
-
-              <option value="Deadline">
-                Deadline
-              </option>
-
-              <option value="Focus block">
-                Focus block
-              </option>
-
-              <option value="Personal">
-                Personal
-              </option>
-
-            </select>
-
-            <div className="modal-buttons">
+            <div className="modal-header">
+              <div>
+                <h2>Edit Post</h2>
+                <p>
+                  Change the details of this calendar
+                  post.
+                </p>
+              </div>
 
               <button
-                className="cancel-button"
+                className="close-btn"
                 onClick={() =>
-                  setEditingEvent(
-                    null
-                  )
+                  setEditingEvent(null)
+                }
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="form-group">
+              <label>Title</label>
+
+              <input
+                value={editForm.title}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    title: e.target.value,
+                  })
+                }
+                placeholder="Post title"
+              />
+            </div>
+
+            <div className="form-row">
+
+              <div className="form-group">
+                <label>Day</label>
+
+                <select
+                  value={editForm.day}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      day: e.target.value,
+                    })
+                  }
+                >
+                  {days.map((day) => (
+                    <option
+                      key={day}
+                      value={day}
+                    >
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Time</label>
+
+                <input
+                  type="time"
+                  value={editForm.time}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      time: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+            </div>
+
+            <div className="form-group">
+              <label>Type</label>
+
+              <select
+                value={editForm.type}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    type: e.target.value,
+                  })
+                }
+              >
+                {types.map((type) => (
+                  <option
+                    key={type}
+                    value={type}
+                  >
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="modal-actions">
+
+              <button
+                className="secondary-btn"
+                onClick={() =>
+                  setEditingEvent(null)
                 }
               >
                 Cancel
               </button>
 
               <button
-                className="save-button"
-                onClick={
-                  saveEdit
-                }
+                className="primary-btn"
+                onClick={saveEdit}
               >
                 Save Changes
               </button>
@@ -1305,147 +1126,130 @@ function App() {
             </div>
 
           </div>
-
         </div>
-
       )}
 
-      {/* =================================================
-          ADD POST MODAL
-      ================================================= */}
+      {/* ========================================= */}
+      {/* ADD POST MODAL */}
+      {/* ========================================= */}
 
       {showAddPost && (
-
         <div className="modal-overlay">
-
           <div className="modal">
 
-            <h2>
-              Add New Post
-            </h2>
+            <div className="modal-header">
+              <div>
+                <h2>Add Post</h2>
 
-            <label>
-              Post Title
-            </label>
-
-            <input
-              type="text"
-              placeholder="Enter post title"
-              value={
-                newPost.title
-              }
-              onChange={(e) =>
-                setNewPost({
-                  ...newPost,
-                  title:
-                    e.target.value
-                })
-              }
-            />
-
-            <label>
-              Day
-            </label>
-
-            <select
-              value={
-                newPost.day
-              }
-              onChange={(e) =>
-                setNewPost({
-                  ...newPost,
-                  day:
-                    e.target.value
-                })
-              }
-            >
-
-              {days.map(
-                (day) => (
-
-                  <option
-                    key={day}
-                    value={day}
-                  >
-                    {day}
-                  </option>
-
-                )
-              )}
-
-            </select>
-
-            <label>
-              Time
-            </label>
-
-            <input
-              type="time"
-              value={
-                newPost.time
-              }
-              onChange={(e) =>
-                setNewPost({
-                  ...newPost,
-                  time:
-                    e.target.value
-                })
-              }
-            />
-
-            <label>
-              Type
-            </label>
-
-            <select
-              value={
-                newPost.type
-              }
-              onChange={(e) =>
-                setNewPost({
-                  ...newPost,
-                  type:
-                    e.target.value
-                })
-              }
-            >
-
-              <option value="Meeting">
-                Meeting
-              </option>
-
-              <option value="Deadline">
-                Deadline
-              </option>
-
-              <option value="Focus block">
-                Focus block
-              </option>
-
-              <option value="Personal">
-                Personal
-              </option>
-
-            </select>
-
-            <div className="modal-buttons">
+                <p>
+                  Create a new calendar post.
+                </p>
+              </div>
 
               <button
-                className="cancel-button"
+                className="close-btn"
                 onClick={() =>
-                  setShowAddPost(
-                    false
-                  )
+                  setShowAddPost(false)
+                }
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="form-group">
+              <label>Title</label>
+
+              <input
+                value={newPost.title}
+                onChange={(e) =>
+                  setNewPost({
+                    ...newPost,
+                    title: e.target.value,
+                  })
+                }
+                placeholder="Enter post title"
+              />
+            </div>
+
+            <div className="form-row">
+
+              <div className="form-group">
+                <label>Day</label>
+
+                <select
+                  value={newPost.day}
+                  onChange={(e) =>
+                    setNewPost({
+                      ...newPost,
+                      day: e.target.value,
+                    })
+                  }
+                >
+                  {days.map((day) => (
+                    <option
+                      key={day}
+                      value={day}
+                    >
+                      {day}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Time</label>
+
+                <input
+                  type="time"
+                  value={newPost.time}
+                  onChange={(e) =>
+                    setNewPost({
+                      ...newPost,
+                      time: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+            </div>
+
+            <div className="form-group">
+              <label>Type</label>
+
+              <select
+                value={newPost.type}
+                onChange={(e) =>
+                  setNewPost({
+                    ...newPost,
+                    type: e.target.value,
+                  })
+                }
+              >
+                {types.map((type) => (
+                  <option
+                    key={type}
+                    value={type}
+                  >
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="modal-actions">
+
+              <button
+                className="secondary-btn"
+                onClick={() =>
+                  setShowAddPost(false)
                 }
               >
                 Cancel
               </button>
 
               <button
-                className="save-button"
-                onClick={
-                  addPost
-                }
+                className="primary-btn"
+                onClick={addPost}
               >
                 Add Post
               </button>
@@ -1453,16 +1257,8 @@ function App() {
             </div>
 
           </div>
-
         </div>
-
       )}
-
-      <footer>
-        Interactive Calendar • React
-        Performance Optimization
-      </footer>
-
     </div>
   );
 }
